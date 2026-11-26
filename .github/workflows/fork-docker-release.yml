@@ -1,0 +1,172 @@
+name: Fork Docker Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "Source branch, tag or commit (empty = selected branch HEAD)"
+        required: false
+        type: string
+      publish_latest:
+        description: "Also update the Docker latest tag"
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fork-docker-release.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-docker-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'LeDomme/prusa-connect' && (github.event_name == 'workflow_dispatch' || github.event.before == '11abce3903c937c3b5f037a1a8a111a04a40cd2b')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      revision: ${{ steps.meta.outputs.revision }}
+      image: ${{ steps.meta.outputs.image }}
+      digest: ${{ steps.publish.outputs.digest }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.event_name == 'push' && github.event.before || inputs.source_ref || github.sha }}
+          persist-credentials: false
+
+      - name: Prepare version and image metadata
+        id: meta
+        run: |
+          set -eu
+          REVISION=$(git rev-parse HEAD)
+          SHORT=$(git rev-parse --short=12 HEAD)
+          BASE=$(tr -d '[:space:]' < VERSION)
+          DATE=$(TZ=UTC git show -s --format=%cd --date=format-local:%Y%m%d HEAD)
+          VERSION="$BASE-dev.$DATE.$SHORT"
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}"
+          [[ "$VERSION" =~ ^[0-9][0-9A-Za-z.-]*$ ]]
+          {
+            echo "version=$VERSION"
+            echo "revision=$REVISION"
+            echo "image=$IMAGE"
+            echo "tags<<TAGS"
+            echo "$IMAGE:$VERSION"
+            echo "$IMAGE:sha-$REVISION"
+            echo "TAGS"
+            echo "build_args<<ARGS"
+            echo "GO_VERSION=$(awk '/^go / {print $2; exit}' go.mod)"
+            echo "BUILD_VERSION=$VERSION"
+            echo "EXTRA_BUILD_TAGS=diagnostics observability postgres"
+            echo "ARGS"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+
+      - name: Build AMD64 image for tests
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
+        with:
+          context: .
+          file: docker/server/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: prusa-connect:release
+          build-args: ${{ steps.meta.outputs.build_args }}
+
+      - name: Run upstream container checks
+        run: |
+          set -eu
+          bash scripts/check-container-nonroot.sh prusa-connect:release
+          bash scripts/check-container-probes.sh prusa-connect:release
+          bash scripts/check-container-privileged-port.sh prusa-connect:release
+
+      - name: Log in to GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish multi-platform image
+        id: publish
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
+        with:
+          context: .
+          file: docker/server/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: ${{ steps.meta.outputs.build_args }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.description=Unofficial development build based on Prusa Connect by Prusa Research
+          provenance: mode=max
+          sbom: true
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532
+
+      - name: Sign published image
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          DIGEST: ${{ steps.publish.outputs.digest }}
+        run: cosign sign --yes "$IMAGE@$DIGEST"
+
+      - name: Update latest after successful signing
+        if: github.event_name == 'push' || inputs.publish_latest
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          DIGEST: ${{ steps.publish.outputs.digest }}
+        run: docker buildx imagetools create --tag "$IMAGE:latest" "$IMAGE@$DIGEST"
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish unofficial GitHub prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.build.outputs.version }}
+          REVISION: ${{ needs.build.outputs.revision }}
+          IMAGE: ${{ needs.build.outputs.image }}
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          set -eu
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::notice::Release $TAG already exists; leaving its notes unchanged."
+            exit 0
+          fi
+          cat > "$RUNNER_TEMP/release.md" <<EOF
+          Unofficial development build by LeDomme, based on Prusa Connect by Prusa Research a.s.
+
+          Source commit: $REVISION
+
+          Docker (Linux AMD64 and ARM64):
+
+              docker pull $IMAGE:$VERSION
+
+          Immutable image reference: $IMAGE@$DIGEST
+
+          The upstream AMD64 container checks passed before publication. No standalone binaries are included. This is not an official Prusa release.
+
+          License: OCL v1.1 + Micro v1 + NoSaaS v1 + SWAtt v1 (see LICENSE in source).
+          EOF
+          gh release create "$TAG" --target "$REVISION" --prerelease --title "Prusa Connect $VERSION (unofficial)" --notes-file "$RUNNER_TEMP/release.md"
