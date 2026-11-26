@@ -171,6 +171,8 @@ These come from defects already found in this tree. A reviewer checks every one,
 | `make test-engines` | run the authorization tests against SQLite and a real Postgres, with both required |
 | `make docker-check` | build the image and prove it is hardened |
 | `docker compose -f docker-compose.local.yml up -d` | run the stack locally |
+| `node tools/design/src/cli.ts <command>` | the design status of the stories. [tools/design/README.md](tools/design/README.md) lists the commands |
+| `make design-check` | the design command line's tests and its type-check |
 
 ## Layout
 

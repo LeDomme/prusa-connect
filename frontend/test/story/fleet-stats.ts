@@ -1,12 +1,12 @@
-// The fleet-stats extension, installed on the story core. Storybook serves its
-// built bundle at `modules/fleet-stats/` beside the preview document, and
-// `iframe.html` carries the import map the bundle loads Svelte and the library
-// through (see `.storybook/main.ts`). A story installs it with the overrides
-// below; the history it reads is answered for every story, since no core
-// screen reads it.
+// The fleet-stats extension, as a module an app story can install (see
+// `modules.ts`). Storybook serves it at `modules/fleet-stats/` beside the
+// preview document: from source in the dev server, and as the built bundle in
+// a build. `iframe.html` carries the import map the bundle loads Svelte and
+// the library through (see `.storybook/main.ts`). The history it reads is
+// answered for every story, since no core screen reads it.
 import { fleetOf, type FleetSize } from '../../.storybook/fleet';
-import fixtures from '../ux/fixtures/api.json';
 import { json } from '../../src/test/stub';
+import type { StoryModule } from './modules';
 
 export const FLEET_STATS_NAMESPACE = 'com.github.aux.prusa3d.fleet-stats';
 
@@ -18,8 +18,10 @@ const SITE = new URL(
   'location' in globalThis ? location.href : 'http://story.test/',
 ).href;
 
-/** Where the bundle's files are, so `fetch` reads its catalogues from there. */
-export const FLEET_STATS_FILES = `${SITE}modules/fleet-stats/`;
+/** Where every module's files are, so `fetch` reads its catalogues from there. */
+export const MODULE_FILES = `${SITE}modules/`;
+
+const FLEET_STATS_FILES = `${MODULE_FILES}fleet-stats/`;
 
 const JOB_SETTLED = 'com.prusa.connect.device.job.settled';
 const OUTCOMES = ['finished', 'finished', 'finished', 'failed', 'cancelled'];
@@ -87,50 +89,115 @@ export const statsJobsAnswer = (size: FleetSize): Response =>
     cursor: '',
   });
 
-interface Listing {
-  readonly items: unknown[];
-}
+const period = (byDefault: string) => ({
+  key: 'period',
+  kind: 'choice',
+  label: 'Period',
+  options: ['7', '30', '90'].map((days) => ({
+    value: days,
+    label: `${days} days`,
+  })),
+  default: byDefault,
+});
+const PRINTERS = { key: 'printers', kind: 'printers', label: 'Printers' };
+const TAG = { key: 'tag', kind: 'tag', label: 'Tag' };
 
-const listing = JSON.parse(fixtures['GET /api/v1/resources'].body) as Listing;
-
-/** The resources listing with fleet-stats installed, as `module add` leaves it. */
-const installed = (): Response =>
-  json(200, {
-    ...listing,
-    items: [
-      ...listing.items,
-      {
-        kind: 'asset',
-        name: 'fleet-stats',
-        namespace: FLEET_STATS_NAMESPACE,
-        uid: 'uid-fleet-stats',
-        enabled: true,
-        source: 'overlay',
-        version: '0.1.4',
-        title: 'Fleet stats',
-        summary:
-          'Job KPIs, a utilization heatmap and a failure breakdown for the fleet, read from history.',
-        codeowner: 'Prusa Research',
-        status: { state: 'ready', serving: true, conditions: [] },
-        ui: {
-          entry_url: `${FLEET_STATS_FILES}index.js`,
-          library: '>=0.0.1 <1.0.0',
-          contributes: {
-            pages: [
-              { path: 'fleet-stats', title: 'Statistics', icon: 'chart-line' },
-            ],
-            device_card: [{ id: 'fleet-stats', title: 'Success rate' }],
-            device_section: [{ id: 'fleet-stats', title: 'Print statistics' }],
+/** fleet-stats as `module add` lists it, its `contributes` as in `module.yaml`. */
+export const fleetStats: StoryModule = {
+  name: 'fleet-stats',
+  resource: {
+    kind: 'asset',
+    name: 'fleet-stats',
+    namespace: FLEET_STATS_NAMESPACE,
+    uid: 'uid-fleet-stats',
+    enabled: true,
+    source: 'overlay',
+    version: '0.3.4',
+    title: 'Fleet stats',
+    summary:
+      'Job KPIs, a daily trend, the most printed files, a utilization heatmap and failures for the fleet, with dashboard cards.',
+    codeowner: 'Prusa Research',
+    status: { state: 'ready', serving: true, conditions: [] },
+    ui: {
+      entry_url: `${FLEET_STATS_FILES}index.js`,
+      library: '>=0.0.1 <1.0.0',
+      // The loader drops the whole module, silently, at the first registration
+      // this block leaves out, so it lists every one `ui/src/index.ts` makes.
+      contributes: {
+        pages: [
+          { path: 'fleet-stats', title: 'Statistics', icon: 'chart-line' },
+        ],
+        device_card: [{ id: 'fleet-stats', title: 'Success rate' }],
+        device_section: [{ id: 'fleet-stats', title: 'Print statistics' }],
+        cards: [
+          {
+            id: 'kpis',
+            title: 'Fleet figures',
+            description:
+              'Jobs, success, print hours and utilization, against the period before.',
+            icon: 'chart-line',
+            size: { w: 6, h: 3 },
+            least: { w: 3, h: 3 },
+            settings: [period('7'), PRINTERS, TAG],
           },
-        },
+          {
+            id: 'trend',
+            title: 'Daily trend',
+            description: 'Jobs, success or print hours day by day.',
+            icon: 'chart-line',
+            size: { w: 6, h: 5 },
+            least: { w: 4, h: 4 },
+            settings: [
+              period('30'),
+              PRINTERS,
+              TAG,
+              {
+                key: 'metric',
+                kind: 'choice',
+                label: 'Metric',
+                options: [
+                  { value: 'jobs', label: 'Jobs' },
+                  { value: 'success', label: 'Success' },
+                  { value: 'hours', label: 'Print hours' },
+                ],
+                default: 'jobs',
+              },
+            ],
+          },
+          {
+            id: 'utilization',
+            title: 'Utilization heatmap',
+            description: 'When each printer prints, hour by weekday.',
+            icon: 'calendar-clock',
+            size: { w: 6, h: 4 },
+            least: { w: 4, h: 4 },
+            settings: [period('7'), PRINTERS, TAG],
+          },
+          {
+            id: 'failures',
+            title: 'Recent failures',
+            description:
+              'The newest failed and cancelled jobs, with their printers.',
+            icon: 'list-checks',
+            size: { w: 4, h: 5 },
+            least: { w: 3, h: 3 },
+            settings: [
+              period('7'),
+              PRINTERS,
+              TAG,
+              {
+                key: 'limit',
+                kind: 'number',
+                label: 'How many',
+                min: 1,
+                max: 20,
+                step: 1,
+                default: 5,
+              },
+            ],
+          },
+        ],
       },
-    ],
-  });
-
-/** Overrides that install fleet-stats; spread them into a story's own. */
-export const withFleetStats = {
-  'GET /api/v1/resources': installed,
-  // The keys the module keeps for this person: none saved yet.
-  [`GET /api/v1/modules/${FLEET_STATS_NAMESPACE}/state`]: () =>
-    json(200, { items: [] }),
+    },
+  },
 };

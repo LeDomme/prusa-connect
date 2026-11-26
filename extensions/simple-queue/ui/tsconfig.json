@@ -14,12 +14,5 @@
       "@prusa/connect-ui/*": ["../../../packages/svelte/src/*/index.ts"]
     }
   },
-  "include": [
-    "src",
-    ".storybook/*.ts",
-    "scripts",
-    "*.config.ts",
-    "*.config.js",
-    ".prettierrc.js"
-  ]
+  "include": ["src", "scripts", "*.config.ts", "*.config.js", ".prettierrc.js"]
 }

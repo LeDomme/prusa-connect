@@ -73,11 +73,12 @@ const fromSource = (command: 'build' | 'serve'): boolean =>
  * has its source at `./src/<p>.ts`. A subpath with no such file, such as
  * `./build` or a stylesheet, resolves to what ships. An alias and not an
  * export condition, because a condition in `exports` ships to every consumer
- * and names files the published package does not carry.
+ * and names files the published package does not carry. `packages` is the
+ * checkout's `packages/` directory, this one's unless another is named.
  */
-export const sourceAliases = (): Alias[] =>
+export const sourceAliases = (packages = LINKED_PACKAGES): Alias[] =>
   ['svelte', 'typescript'].flatMap((dir) => {
-    const root = join(LINKED_PACKAGES, dir);
+    const root = join(packages, dir);
     const { name, exports } = JSON.parse(
       readFileSync(join(root, 'package.json'), 'utf8'),
     ) as { name: string; exports: Record<string, string | { types?: string }> };
@@ -93,6 +94,20 @@ export const sourceAliases = (): Alias[] =>
       return [{ find: new RegExp(`^${exact}$`), replacement: file }];
     });
   });
+
+/**
+ * The extension clients a story reaches by their package name, each read
+ * from its source: a client is built to `dist/` by its own package, which no
+ * Storybook build runs. The Storybook resolves with these, and so does the
+ * design status, so an edit to a client moves the stories that import it.
+ * `extensions` is the checkout's `extensions/` directory.
+ */
+export const extensionClientAliases = (extensions: string): Alias[] => [
+  {
+    find: /^(threemf|server-slicing|simple-queue)-client$/,
+    replacement: join(extensions, '$1/client/src/index.ts'),
+  },
+];
 
 const LIBRARY_SOURCE_ENTRIES = [
   'index.html',

@@ -1,7 +1,7 @@
 <!--
   A page an installed module adds, at `/m/<namespace>/<path>`. States it
-  branches on: the page of fleet-stats, the extension's built bundle that
-  Storybook serves; no such page on this server; and a module the operator's
+  branches on: the page of fleet-stats, which the modules toolbar installs; no
+  such page on this server, with every module off; and a module the operator's
   key keeps off; and "opening" while the loader waits for its own read of the
   module listing.
   Omitted Failed: a failed module listing leaves the loader nothing to load, so the page says it has no such page, as the No such page story shows.
@@ -11,11 +11,9 @@
   import { defineMeta } from '@storybook/addon-svelte-csf';
 
   import AppAt from '../../../test/story/app-at.svelte';
-  import {
-    FLEET_STATS_NAMESPACE as NAMESPACE,
-    withFleetStats,
-  } from '../../../test/story/fleet-stats';
+  import { FLEET_STATS_NAMESPACE as NAMESPACE } from '../../../test/story/fleet-stats';
   import { type Overrides, pending } from '../../../test/story/api';
+  import { coreResources } from '../../../test/story/modules';
   import { json } from '../../test/stub';
 
   const { Story } = defineMeta({ title: 'Screens/Module page' });
@@ -30,22 +28,19 @@
   const firstOnly = (): Overrides[string] => {
     let reads = 0;
 
-    return () => (reads++ === 0 ? withFleetStats[RESOURCES]() : pending());
+    return () => (reads++ === 0 ? coreResources() : pending());
   };
 </script>
 
 <Story name="Fleet stats">
-  <AppAt path={PATH} overrides={withFleetStats} />
+  <AppAt path={PATH} />
 </Story>
 
 <Story name="Loading">
-  <AppAt
-    path={PATH}
-    overrides={{ ...withFleetStats, [RESOURCES]: firstOnly() }}
-  />
+  <AppAt path={PATH} overrides={{ [RESOURCES]: firstOnly() }} />
 </Story>
 
-<Story name="No such page">
+<Story name="No such page" globals={{ modules: '' }}>
   <AppAt path={PATH} />
 </Story>
 

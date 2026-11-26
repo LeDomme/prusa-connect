@@ -23,6 +23,7 @@ updates:
       - /packages/svelte
       - /packages/standards
       - /packages/typescript
+      - /tools/design
       - /examples/nozzle-watch/ui
       - /examples/service-plugin/client
       - /packages/fractal/client

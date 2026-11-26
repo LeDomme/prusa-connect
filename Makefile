@@ -1,6 +1,6 @@
 # Run `make` to see the list of available commands.
 
-.PHONY: help run demo-modules demo install-deps install-hooks generate-printer-config certificate-server certificate-prusa certificate-all server-up server-down server-restart status logs build sync-version build-config _build-full-binary build-full build-ci build-minimal _printer-build-inputs build-printer build-cross _build-cross-full _build-cross-minimal print-build-tags compose-build compose-check _ensure-pnpm clean clean-js clean-frontend clean-docs test test-unit test-race test-race-linux test-engines test-engines-down module-database-e2e upgrade-process-e2e test-adapters fixtures-up fixtures-down postgres-dev-up postgres-dev-down postgres-dev-reset test-matrix test-matrix-full test-e2e test-firmware mini404-smoke firmware-up test-printer test-minimal test-config test-full coverage coverage-integration journey-check oidc-providers-check preflight test-shard go-cache-warm ci-local ci-local-fast ci-local-list pre-commit lint lint-fix style-check arch-check workflows-check secrets-check makefile-check changelog-check changelog-new changelog-preview commit-style-check adr-new migration-new hooks-check go-version-check vuln-check binary-check deadcode-check sdk-check side-modules-check api-check api-accept vocab-check vocab-accept generate-error-codes error-codes-check generate-extensions extensions-check generate-capabilities capabilities-check generate-resource-kinds resource-kinds-check generate-authz-vocabulary authz-vocabulary-check generate-event-types event-types-check generate-slots slots-check generate-device-issues device-issues-check generate-device-models device-models-check generate-printer-error-codes generate-wire-protocol wire-check generate-openapi openapi-check docs install-docs-deps docs-site-check docs-links-check docs-tables-check docs-check generate-config-reference config-reference-check generate-sdk-reference sdk-reference-check docs-up docs-down _client-sdk-deps client-sdk-build generate-client-sdk client-sdk-check client-sdk-install-check fractal-client-build _client-ui-deps client-ui-build client-ui-lint client-ui-svelte-check client-ui-test client-ui-storybook client-ui-check _app-deps frontend-build frontend-storybook fleet-stats-ui-build frontend-check embed-app embedded-app-check clean-app registry-up registry-down registry-reset registry-publish registry-status registry-use scaffold-driver new-module example-spools-check docker-check docker-clean mockup-up mockup-status mockup-seed mockup-check mockup-down release-alpha release-beta release-stable
+.PHONY: help run demo-modules demo install-deps install-hooks generate-printer-config certificate-server certificate-prusa certificate-all server-up server-down server-restart status logs build sync-version build-config _build-full-binary build-full build-ci build-minimal _printer-build-inputs build-printer build-cross _build-cross-full _build-cross-minimal print-build-tags compose-build compose-check _ensure-pnpm clean clean-js clean-frontend clean-docs test test-unit test-race test-race-linux test-engines test-engines-down module-database-e2e upgrade-process-e2e test-adapters fixtures-up fixtures-down postgres-dev-up postgres-dev-down postgres-dev-reset test-matrix test-matrix-full test-e2e test-firmware mini404-smoke firmware-up test-printer test-minimal test-config test-full coverage coverage-integration journey-check oidc-providers-check preflight test-shard go-cache-warm ci-local ci-local-fast ci-local-list pre-commit lint lint-fix style-check arch-check workflows-check secrets-check makefile-check changelog-check changelog-new changelog-preview commit-style-check adr-new migration-new hooks-check go-version-check vuln-check binary-check deadcode-check sdk-check side-modules-check api-check api-accept vocab-check vocab-accept generate-error-codes error-codes-check generate-extensions extensions-check generate-capabilities capabilities-check generate-resource-kinds resource-kinds-check generate-authz-vocabulary authz-vocabulary-check generate-event-types event-types-check generate-slots slots-check generate-device-issues device-issues-check generate-device-models device-models-check generate-printer-error-codes generate-wire-protocol wire-check generate-openapi openapi-check docs install-docs-deps docs-site-check docs-links-check docs-tables-check docs-check generate-config-reference config-reference-check generate-sdk-reference sdk-reference-check docs-up docs-down _client-sdk-deps client-sdk-build generate-client-sdk client-sdk-check client-sdk-install-check fractal-client-build _client-ui-deps client-ui-build client-ui-lint client-ui-svelte-check client-ui-test client-ui-storybook client-ui-check _app-deps frontend-build frontend-storybook-deps frontend-storybook design-check fleet-stats-ui-build frontend-check embed-app embedded-app-check clean-app registry-up registry-down registry-reset registry-publish registry-status registry-use scaffold-driver new-module example-spools-check docker-check docker-clean mockup-up mockup-status mockup-seed mockup-check mockup-down release-alpha release-beta release-stable
 
 CONFIG_FILE ?= config/config.yaml
 EXTRA_BUILD_TAGS ?=
@@ -1597,17 +1597,38 @@ client-ui-check: _client-ui-deps ## (pnpm, a Playwright Chromium) the component 
 # library and the client SDK from this checkout.
 APP_DIR := frontend
 
+# The Storybook config imports the design CLI, so svelte-check and the tests
+# of the web app read tools/design/node_modules too.
 _app-deps: _ensure-pnpm
 	@echo "Installing the web app dependencies..."
 	@cd $(APP_DIR) && pnpm install --frozen-lockfile
+	@cd tools/design && pnpm install --frozen-lockfile
 
 frontend-build: _app-deps client-sdk-build client-ui-build fractal-client-build ## (pnpm) build the web app into frontend/dist
 	@echo "Building the web app..."
 	@cd $(APP_DIR) && pnpm run build >/dev/null
 	@echo "OK    the web app built"
 
-frontend-storybook: _app-deps client-sdk-build client-ui-build fractal-client-build fleet-stats-ui-build ## (pnpm) the Storybook of the web app and the component library builds
+# The stories of these extensions are drawn in the product Storybook and
+# import their own dependencies from their own node_modules.
+STORYBOOK_EXTENSIONS := threemf server-slicing simple-queue
+
+# A Storybook that spreads this app's config reads the same, so it runs this
+# target first.
+frontend-storybook-deps: _app-deps client-sdk-build client-ui-build fractal-client-build fleet-stats-ui-build ## (pnpm) install and build what the Storybook of the web app reads
+	@for EXT in $(STORYBOOK_EXTENSIONS); do (cd extensions/$$EXT/ui && pnpm install --frozen-lockfile) || exit 1; done
+
+# The design status of each story file becomes its `status:` tag in the sidebar.
+frontend-storybook: frontend-storybook-deps ## (pnpm) the Storybook of the web app, the component library and three extensions builds
+	@node tools/design/src/cli.ts status --write frontend/.storybook/generated/design-status.json
 	@cd $(APP_DIR) && pnpm run build-storybook >/dev/null
+
+# tsc comes from the web app, whose node_modules also hold the Vite types that
+# frontend/vite/import-map.ts imports into the CLI.
+design-check: _app-deps ## (node, pnpm) the design CLI's tests pass and it type-checks
+	@node --test 'tools/design/test/*.test.ts'
+	@cd $(APP_DIR) && pnpm exec tsc -p ../tools/design/tsconfig.json
+	@echo "OK    the design CLI's tests pass and it type-checks"
 
 # Storybook serves this bundle as the installed extension of its module page.
 fleet-stats-ui-build: client-sdk-build client-ui-build ## (pnpm) build the fleet-stats extension's bundle into extensions/fleet-stats/ui/dist

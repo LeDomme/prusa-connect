@@ -103,7 +103,7 @@ recorded. The ended prints stay in the queue's history.
 | `make -C extensions check EXT=simple-queue` | test both halves, pack a release, install it into a demo and print a queue on a simulated printer |
 | `make test` | build, vet and test the Go half, in this folder |
 | `pnpm run check` in `ui/` | lint, type-check and test the browser half in Chromium |
-| `pnpm run storybook` in `ui/` | draw every component in every state |
+| `pnpm --dir frontend run storybook` | draw every component in every state, in the product Storybook |
 
 | path | purpose |
 |---|---|
@@ -214,9 +214,8 @@ curl -X POST "$CORE/grants/device/$PRINTER" -H "Authorization: Bearer $TOKEN" \
 
 `make -C extensions check EXT=simple-queue` lints the Go half and runs
 `scripts/check.sh`. That script builds and tests both halves, and checks that
-the typed client in `client/` is what `openapi.json` generates. It builds the
-Storybook, packs a release and installs it into a demo server with one
-simulated printer.
+the typed client in `client/` is what `openapi.json` generates. It packs a
+release and installs it into a demo server with one simulated printer.
 
 Then it puts two files on the printer's queue, writes the grant and marks the
 bed clear. It checks that the first file starts by itself. After the first

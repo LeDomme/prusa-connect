@@ -1,0 +1,22 @@
+{
+  "name": "@prusa/design-cli",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.3.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "design": "src/cli.ts"
+  },
+  "scripts": {
+    "test": "node --test 'test/*.test.ts'"
+  },
+  "dependencies": {
+    "@tailwindcss/node": "4.3.3",
+    "tailwindcss": "4.3.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2"
+  }
+}

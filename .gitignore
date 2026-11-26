@@ -36,6 +36,8 @@ prusa_printer_settings.ini
 # The Svelte application's dependencies and build output
 frontend/node_modules/
 frontend/dist/
+# Written by `design status --write` for the Storybook's status tags.
+frontend/.storybook/generated/
 # The Svelte app the core's binary embeds. The .gitkeep is committed so
 # //go:embed compiles before `make embed-app` has ever run.
 internal/transport/http/httpapi/appdist/*
@@ -76,6 +78,9 @@ go.work.sum
 # it is covered by the dedicated .claude-spec change, which re-includes the
 # shared parts (skills/, agents/, commands/, settings.json). Do not add it here.
 .idea/
+
+# Finder writes one into every folder it shows.
+.DS_Store
 
 # Process artifacts from planning workflows — working notes, not deliverables
 docs/superpowers/
@@ -121,3 +126,6 @@ docs/superpowers/
 # Playwright output
 playwright-report/
 test-results/
+
+# design CLI
+tools/design/node_modules/

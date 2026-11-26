@@ -1,0 +1,11 @@
+{
+  "GET /api/v1/jobs": {
+    "status": 200,
+    "type": "application/json",
+    "body": "{\"items\":[],\"cursor\":\"\",\"limit\":50}"
+  },
+  "GET /api/v1/principal": {
+    "type": "application/json",
+    "body": { "principal": "user:designer" }
+  }
+}
