@@ -249,6 +249,12 @@ func (h *Host) servesTo(declared resource.Declaration) (wirerpc.Methods, error) 
 		maps.Copy(serves, busapi.SubscribeHandler(h.vouchFeed(declared.Ref, h.cfg.Feed(module))))
 	}
 
+	// The calls a driver module makes on the host: its sessions' state and
+	// the bytes of an upload (ADR-20261123-sat rule 7).
+	if declared.Ref.Kind() == ref.KindDriver {
+		maps.Copy(serves, h.DriverClient(declared.Ref).Handlers())
+	}
+
 	// The one call a link module makes on the host. It is installed only for
 	// a link instance, because the event it produces is this site's link
 	// state and no other kind reports one.

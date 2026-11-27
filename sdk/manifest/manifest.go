@@ -128,6 +128,9 @@ type Manifest struct {
 	// CameraTypes is the camera types the module offers, and nil for a module
 	// that offers none (ADR-20261106-km2).
 	CameraTypes []CameraType
+	// Driver is the printer driver a driver module serves, and nil for any
+	// other module (ADR-20261123-sat).
+	Driver *Driver
 }
 
 // Requirement is one entry of the require map. One of Capability, Core and
@@ -164,6 +167,7 @@ var manifestKeys = []string{
 	"routes", "options", "egress",
 	"openapi", "platforms", "build",
 	"title", "summary", "codeowner", "issue_tracker", "lifecycle", "ui", "file_analysis", "camera_types",
+	"driver",
 }
 
 // Parse reads one module.yaml with the decoder the caller brings. name is what
@@ -212,6 +216,14 @@ func FromTree(tree map[string]any) (Manifest, error) {
 	}
 
 	if held.CameraTypes, err = readCameraTypes(tree); err != nil {
+		return Manifest{}, err
+	}
+
+	if held.Driver, err = readDriver(tree); err != nil {
+		return Manifest{}, err
+	}
+
+	if err = holdDriver(held); err != nil {
 		return Manifest{}, err
 	}
 

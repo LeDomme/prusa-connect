@@ -513,6 +513,12 @@ var errNothingToInstall = errors.New(
 // actually ships. A module that runs a process is declared under a kind that
 // offers the service runtime, and one that is only a bundle is an asset.
 func installableUnder(kind ref.Kind, declared manifest.Manifest) error {
+	if declared.Driver != nil {
+		if _, err := driverOf(declared.Driver.Dialect, declared.Driver.Baseline); err != nil {
+			return err
+		}
+	}
+
 	offered := ref.KindRuntimes(kind)
 
 	if declared.ContractMajor > 0 {
@@ -598,6 +604,7 @@ func writeDeclaration(
 			// camera of one is declared long after the release is gone
 			// (ADR-20261106-km2).
 			CameraTypes: cameraTypesOf(held.manifest.CameraTypes),
+			Driver:      driverBlockOf(held.manifest.Driver),
 			// The settings the module reads, with the default of each. They
 			// are the module's own default configuration: nothing is written
 			// into the file here, and an operator overrides a key by writing

@@ -33,8 +33,9 @@ func TestATypeThisBuildDoesNotHaveFailsItsInstanceAndNothingElse(t *testing.T) {
 
 	for _, kind := range ref.SupervisedKinds() {
 		// A kind nothing reads back is refused at load whatever its type, so
-		// it never reaches this host.
-		if !kind.Read() || !slices.Contains(ref.KindRuntimes(kind), ref.RuntimeBuiltin) {
+		// it never reaches this host. Nor does a builtin driver: only a driver
+		// module is read back (ADR-20261123-sat).
+		if !kind.Read() || kind == ref.KindDriver || !slices.Contains(ref.KindRuntimes(kind), ref.RuntimeBuiltin) {
 			continue
 		}
 
