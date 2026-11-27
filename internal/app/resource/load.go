@@ -415,7 +415,25 @@ func fileDeclaration(
 
 	spec.Runtime, spec.Service, spec.Script, spec.Asset = installModeOf(modes, instance)
 
+	if err = readBackAs(instance, spec.Runtime); err != nil {
+		return Declaration{}, err
+	}
+
 	return Declaration{Ref: instance, Spec: spec, Source: SourceFile}, nil
+}
+
+// readBackAs is readBack for a kind whose reader reads only one runtime. The
+// dial supervisor reads a driver module back (ADR-20261123-sat). A driver
+// compiled into the server is declared under core.connectors, and nothing
+// reads one declared here.
+func readBackAs(instance ref.Ref, runtime install.Runtime) error {
+	if instance.Kind() != ref.KindDriver || runtime == install.RuntimeService {
+		return nil
+	}
+
+	return fmt.Errorf("nothing in this build reads back a builtin instance of kind driver, so %s would "+
+		"report ready and answer nothing. A driver compiled into the server is declared under "+
+		"core.connectors, and one here runs as a module with runtime service", instance)
 }
 
 // installFailures converts the failures of internal/app/config/install. An
@@ -709,7 +727,7 @@ func overlayDeclarations(overlay overlayFile) ([]Declaration, []Failure, error) 
 		// An overlay written by a build that accepted this kind still holds
 		// the entry, so it is refused here as well as at the API. The entry
 		// stays in the file and the operator reads the reason in the log.
-		if unread := readBack(instance); unread != nil {
+		if unread := overlayReadBack(instance, entry); unread != nil {
 			failures = append(failures, Failure{
 				Key: "resources." + entry.Kind + "." + entry.Name,
 				Err: fmt.Errorf("%w: overlay entry %s: %w", ErrConfigInvalid, instance, unread),
@@ -863,4 +881,19 @@ func recorded(overlay overlayFile, instance ref.Ref) (ref.UID, int64) {
 	}
 
 	return uid, identity.Generation
+}
+
+// overlayReadBack is readBack and readBackAs for one overlay entry. An entry
+// that names no runtime is builtin.
+func overlayReadBack(instance ref.Ref, entry overlayEntry) error {
+	if err := readBack(instance); err != nil {
+		return err
+	}
+
+	runtime := install.RuntimeBuiltin
+	if named := strings.TrimSpace(entry.Runtime); named != "" {
+		runtime = install.Runtime(named)
+	}
+
+	return readBackAs(instance, runtime)
 }

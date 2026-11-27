@@ -65,6 +65,25 @@ export default [
 ];
 ```
 
+`eslint/library` and `eslint/application` also export
+`deprecatedImports(rootDir)`. It reads `<rootDir>/design/deprecations.json`,
+the components a designer marked deprecated, and returns the
+`no-restricted-imports` patterns that warn on a new import of one:
+
+```js
+{
+  rules: {
+    'no-restricted-imports': [
+      'warn',
+      { patterns: deprecatedImports(path.resolve(import.meta.dirname, '..')) },
+    ],
+  },
+},
+```
+
+A later config object that sets `no-restricted-imports` for some files
+replaces these patterns there, as flat config replaces any rule's options.
+
 ## Using the Prettier config
 
 ```json

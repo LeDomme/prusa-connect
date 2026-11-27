@@ -16,6 +16,7 @@ import (
 	"github.com/prusa3d/prusa-connect/sdk/busapi"
 	"github.com/prusa3d/prusa-connect/sdk/cameraapi"
 	"github.com/prusa3d/prusa-connect/sdk/deviceapi"
+	"github.com/prusa3d/prusa-connect/sdk/driverwire"
 	"github.com/prusa3d/prusa-connect/sdk/fault"
 	"github.com/prusa3d/prusa-connect/sdk/linkapi"
 	"github.com/prusa3d/prusa-connect/sdk/manifest"
@@ -76,6 +77,7 @@ func Capabilities() []string {
 		uiapi.MethodHide,
 		routesapi.MethodCall,
 	}
+	methods = append(methods, driverwire.HostMethods()...)
 
 	out := make([]string, 0, len(methods))
 	for _, method := range methods {

@@ -4,6 +4,12 @@ What changed in this module, newest first. The top heading is the version
 `module.yaml` declares and the version this process reports to the host, and
 `changelog_test.go` fails when the three differ.
 
+## 0.1.1 - 2026-11-26
+
+### Changed
+
+- The module's stories now render in the product Storybook, and its own Storybook is gone.
+
 ## 0.1.0 - 2026-10-29
 
 ### Added

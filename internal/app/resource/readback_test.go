@@ -19,17 +19,16 @@ import (
 // credential. Nothing anywhere read the instance back, so the identity provider
 // authenticated nobody while reporting that it was serving.
 //
-// auth has a reader since the bearer path, so the cases below name driver, the
-// kind that is still read by nothing. The kinds nothing reads are
-// ref.UnreadKinds, and internal/arch holds that list against the call sites
-// that do the reading. These cases hold the other half: a declaration of one
-// of them is refused at every door it can arrive at.
+// Every supervised kind has a reader now. driver was the last: the dial
+// supervisor reads a driver module back (ADR-20261123-sat), and nothing reads a
+// builtin driver declared here, because a compiled-in driver is declared under
+// core.connectors. So a driver kind runs only as a service, and these cases hold
+// that a builtin driver is refused at every door a declaration arrives at.
 
-// TestADeclarationOfAKindNothingReadsBackFailsThatInstanceAlone is the
-// operator's file. The refusal takes the instance and nothing else, because a
-// server that will not start over one block is the outage the refusal exists to
-// prevent.
-func TestADeclarationOfAKindNothingReadsBackFailsThatInstanceAlone(t *testing.T) {
+// TestABuiltinDriverInTheFileFailsThatInstanceAlone is the operator's file. The
+// refusal takes the instance and nothing else, because a server that will not
+// start over one block is the outage the refusal exists to prevent.
+func TestABuiltinDriverInTheFileFailsThatInstanceAlone(t *testing.T) {
 	t.Parallel()
 
 	doc, err := load(t, `
@@ -48,20 +47,20 @@ resources:
 	require.NoError(t, err, "one refused instance took the whole document with it")
 
 	require.Equal(t, []ref.Ref{refOf(t, ref.KindStorage, "local")}, refsOf(doc),
-		"a driver instance nothing reads back must not reach the supervision plane")
+		"a builtin driver instance must not reach the supervision plane")
 
 	require.Len(t, doc.Failures, 1)
 	require.Equal(t, "resources.driver.bench", doc.Failures[0].Key)
 	require.ErrorIs(t, doc.Failures[0].Err, resource.ErrConfigInvalid)
-	require.Contains(t, doc.Failures[0].Err.Error(), "reads back an instance of kind driver",
-		"the refusal has to say why, or the operator reads it as a typo")
+	require.Contains(t, doc.Failures[0].Err.Error(), "service",
+		"the refusal has to say a driver here runs as a module, or the operator reads it as a typo")
 }
 
-// TestAnOverlayEntryOfAKindNothingReadsBackIsDropped is the machine-owned file.
-// An overlay written by a binary that accepted the kind still holds the entry,
-// so refusing at the API alone would leave the defect in the deployments that
-// already have it.
-func TestAnOverlayEntryOfAKindNothingReadsBackIsDropped(t *testing.T) {
+// TestABuiltinDriverInTheOverlayIsDropped is the machine-owned file. An overlay
+// written by a binary that accepted the kind still holds the entry, so refusing
+// at the API alone would leave the defect in the deployments that already
+// have it.
+func TestABuiltinDriverInTheOverlayIsDropped(t *testing.T) {
 	t.Parallel()
 
 	h := newHarness(t)
@@ -82,12 +81,12 @@ func TestAnOverlayEntryOfAKindNothingReadsBackIsDropped(t *testing.T) {
 	require.Len(t, doc.Failures, 1)
 	require.Equal(t, "resources.driver.bench", doc.Failures[0].Key)
 	require.ErrorIs(t, doc.Failures[0].Err, resource.ErrConfigInvalid)
+	require.Contains(t, doc.Failures[0].Err.Error(), "service")
 }
 
-// TestTheResourceAPIRefusesAKindNothingReadsBack is the third door. The write
-// surface names the kinds it does accept, so an operator reading the refusal
-// knows what to write instead.
-func TestTheResourceAPIRefusesAKindNothingReadsBack(t *testing.T) {
+// TestTheResourceAPIRefusesABuiltinDriver is the third door. The API creates
+// only builtin instances, and a driver here is written by a module install.
+func TestTheResourceAPIRefusesABuiltinDriver(t *testing.T) {
 	t.Parallel()
 
 	h := newHarness(t)
@@ -95,18 +94,7 @@ func TestTheResourceAPIRefusesAKindNothingReadsBack(t *testing.T) {
 	_, err := h.create(mustRef(t, ref.KindDriver, "bench"), spec("core/xbuddy", `{"listen":"127.0.0.1:0"}`))
 	require.Error(t, err, "the API must not write an instance the loader would refuse")
 	require.True(t, fault.HasCode(err, httpfault.CodeRequestInvalid()), "want a request refusal, got %v", err)
-	require.Contains(t, err.Error(), "reads back an instance of kind driver")
-
-	var refused *fault.Fault
-
-	require.ErrorAs(t, err, &refused)
-
-	reason, carried := refused.Params().Get("reason")
-	require.True(t, carried, "the refusal carries no reason, so a client cannot say what is legal")
-
-	for _, kind := range ref.ReadKinds() {
-		require.Contains(t, reason.String(), kind.String(), "the refusal has to name the kinds that work")
-	}
+	require.Contains(t, err.Error(), "core.connectors")
 }
 
 // TestAModuleDeclarationProjectsWhatItsManifestSaid is the old backlog's read

@@ -1,4 +1,9 @@
-import { libraryConfig } from '@prusa/frontend-standards/eslint/library';
+import path from 'node:path';
+
+import {
+  deprecatedImports,
+  libraryConfig,
+} from '@prusa/frontend-standards/eslint/library';
 
 import svelteConfig from './svelte.config.js';
 
@@ -34,6 +39,22 @@ export default [
     },
   },
 
+  {
+    // The typescript-eslint twin of the rule, so the tier blocks below, which
+    // set `no-restricted-imports` as an error for their files, leave these
+    // deprecation warnings in place there: a rule has one severity and one
+    // option list per file.
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'warn',
+        {
+          patterns: deprecatedImports(
+            path.resolve(import.meta.dirname, '../..'),
+          ),
+        },
+      ],
+    },
+  },
   {
     // ADR-20260914-244 rule 1: the `core` tier imports the SDK, the domain and the
     // catalogue, and nothing above it. The matcher's own files sit directly

@@ -10,7 +10,7 @@ import {
   fleetOf,
   type FleetSize,
 } from '../../.storybook/fleet';
-import { FLEET_STATS_FILES, historyAnswer } from './fleet-stats';
+import { historyAnswer, MODULE_FILES } from './fleet-stats';
 import { materialReading, materialsList } from './materials-catalogue';
 import recorded from './recorded.json';
 import { storyStorage } from './storage-api';
@@ -110,11 +110,33 @@ const methodOf = (input: RequestInfo | URL, init?: RequestInit): string =>
   init?.method ??
   (typeof input === 'object' && 'method' in input ? input.method : 'GET');
 
+// The Fetch standard refuses any body, even an empty one, with these codes.
+const NO_BODY = new Set([204, 205, 304]);
+
 const fromRow = (row: Row): Response =>
-  new Response(row.body, {
+  new Response(NO_BODY.has(row.status) ? null : row.body, {
     status: row.status,
     headers: { 'content-type': row.type },
   });
+
+/**
+ * The rows of a `*.fixture.json` file as `overrides`. A body is the text the
+ * core sends, or JSON, which is sent as its text. A row with no status
+ * answers 200.
+ */
+export const fromFixture = (
+  fixture: Record<string, { status?: number; type: string; body: unknown }>,
+): Overrides =>
+  Object.fromEntries(
+    Object.entries(fixture).map(([key, { status = 200, type, body }]) => [
+      key,
+      fromRow({
+        status,
+        type,
+        body: typeof body === 'string' ? body : JSON.stringify(body),
+      }),
+    ]),
+  );
 
 // Read once, as this file loads, so a stub is never taken for the real one.
 const original = globalThis.fetch;
@@ -193,6 +215,10 @@ export const installApi = (
       if (job !== undefined) return json(200, job);
     }
     if (key === 'GET /api/v1/history/facts') return historyAnswer(size);
+    // The keys a module keeps for this person: none saved yet.
+    if (/^GET \/api\/v1\/modules\/[^/]+\/state$/.test(key)) {
+      return json(200, { items: [] });
+    }
     const filesId = /^GET \/api\/v1\/devices\/([^/]+)\/files$/.exec(key)?.[1];
     if (filesId !== undefined && deviceIds.has(filesId)) {
       const directory = query.get('path');
@@ -237,13 +263,13 @@ export const installApi = (
   };
 
   globalThis.fetch = async (input, init) => {
-    // The extension's catalogues are files Storybook serves.
+    // A module's catalogues are files Storybook serves.
     const address = addressOf(input);
     const { location } = globalThis as { location?: Location };
     const ownFile = new URL(address, location?.href ?? 'http://core.test');
     const method = methodOf(input, init);
     const path = `${method} ${ownFile.pathname}`;
-    if (address.startsWith(FLEET_STATS_FILES)) {
+    if (address.startsWith(MODULE_FILES)) {
       return original(input, init);
     }
     const url = ownFile;

@@ -1,8 +1,9 @@
 <!--
-  The real app at one address, over the story core of `api.ts`. The core is
-  installed while this component initialises, before `App` asks for anything,
-  and a new fleet size draws a new `App` over a new core. The size is `many`
-  unless `size` fixes one. The app's route is held
+  The real app at one address, over the story core of `api.ts` with the
+  modules the toolbar turns on. The core is installed while this component
+  initialises, before `App` asks for anything, and a new fleet size or module
+  selection draws a new `App` over a new core. The size is `many` unless
+  `size` fixes one. The app's route is held
   inside the preview so a reload can reopen the same story.
 -->
 <script lang="ts">
@@ -12,6 +13,7 @@
   import App from '../../src/app.svelte';
   import { type FleetSize, installApi, type Overrides } from './api';
   import { devicePreviewOf } from './device-previews';
+  import { installModules, selectedModules } from './modules';
 
   interface Props {
     path: string;
@@ -23,12 +25,17 @@
 
   const fleet = $derived(size ?? 'many');
 
+  const modules = selectedModules();
+
   let restore = (): void => undefined;
 
   // Called from the key below, so the stub is installed before App requests.
-  const serve = (fleet: FleetSize, at: string): string => {
-    restore = installApi(fleet, overrides);
-    return `${fleet} ${at}`;
+  const serve = (fleet: FleetSize, at: string, selection: string): string => {
+    restore = installApi(
+      fleet,
+      installModules(overrides, { selection, modules: modules.modules }),
+    );
+    return `${fleet} ${at} ${selection}`;
   };
 
   // Extension details read their query directly from the preview document.
@@ -84,6 +91,6 @@
   });
 </script>
 
-{#key serve(fleet, path)}
+{#key serve(fleet, path, modules.selection)}
   <App navigation={previewNavigation(path)} deviceThumbnail={devicePreviewOf} />
 {/key}

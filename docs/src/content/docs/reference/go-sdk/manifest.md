@@ -183,6 +183,14 @@ const MaxMemoryMiB = 8192
 
 The memory budget a module may recommend, in MiB.
 
+### `KindDriver` {#manifest-kinddriver}
+
+```go
+const KindDriver = "driver"
+```
+
+KindDriver is the kind of a module that serves a printer driver (ADR-20261123-sat).
+
 ### `MaxAllowedOrigins` {#manifest-maxallowedorigins}
 
 ```go
@@ -816,6 +824,22 @@ func (s DeviceSelector) IsZero() bool
 
 IsZero reports a selector that names no condition. A selector cannot be compared with ==, so test it with IsZero.
 
+### `Driver` {#manifest-driver}
+
+```go
+type Driver struct {
+    // Dialect is a connectorapi.Dialect: what an endpoint needs, the models,
+    // the admission and the state set.
+    Dialect json.RawMessage `json:"dialect"`
+    // Baseline is a connectorapi.Set: what the driver can do for any printer.
+    Baseline json.RawMessage `json:"baseline"`
+}
+```
+
+Driver is the driver block of a driver module: what the host needs of the driver before its process runs. The host reads it at install and never from the process (ADR-20261123-sat rule 3).
+
+Both halves are JSON in the shape sdk/connectorapi defines, and they stay JSON here. The host decodes and checks them, so a package that reads a manifest does not reach the printer contract.
+
 ### `Egress` {#manifest-egress}
 
 ```go
@@ -1074,6 +1098,9 @@ type Manifest struct {
     // CameraTypes is the camera types the module offers, and nil for a module
     // that offers none (ADR-20261106-km2).
     CameraTypes []CameraType
+    // Driver is the printer driver a driver module serves, and nil for any
+    // other module (ADR-20261123-sat).
+    Driver *Driver
 }
 ```
 

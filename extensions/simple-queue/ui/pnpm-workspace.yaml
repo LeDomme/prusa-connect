@@ -10,8 +10,8 @@ minimumReleaseAge: 4320
 # Written versions stay exact.
 savePrefix: ''
 
-# One dependency comes with a build script: esbuild, which Storybook brings.
-# Its script only fetches the binary the package already carries for this
+# One dependency comes with a build script: esbuild, which Vite brings. Its
+# script only fetches the binary the package already carries for this
 # platform, so it is named and refused. pnpm 11 refuses every dependency
 # script that allowBuilds does not name. Playwright's install script only
 # prints a hint; the browser comes from `pnpm exec playwright install

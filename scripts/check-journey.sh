@@ -102,8 +102,10 @@ step "the component library builds" sh -c \
 step "the Fractal module's client builds" sh -c \
 	"cd '$FRACTAL_CLIENT_DIR' && pnpm install --frozen-lockfile && pnpm run build"
 
+# The application's svelte-check covers its Storybook config, which imports
+# the design CLI.
 step "the application installs" sh -c \
-	"cd '$APP_DIR' && pnpm install --frozen-lockfile"
+	"cd '$APP_DIR' && pnpm install --frozen-lockfile && pnpm --dir ../tools/design install --frozen-lockfile"
 
 # The application is served by a Vite dev server in the lane, so it is not
 # built here. It is type-checked, because a page that does not compile is a

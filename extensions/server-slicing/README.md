@@ -31,7 +31,7 @@ which draws the Slicing page. It has a list of the PrusaSlicer versions, a list 
 | `make test` | build, vet and test the Go half, in this folder |
 | `SLICER_INTEGRATION=1 go test -run TestTheRealSlicer -v .` | install PrusaSlicer 2.9.6 and 3.0.0-alpha12 from GitHub and slice small projects with them, on macOS |
 | `pnpm run check` in `ui/` | lint, type-check and test the browser half in Chromium |
-| `pnpm run storybook` in `ui/` | draw every component of the page in every state |
+| `pnpm --dir frontend run storybook` | draw every component of the page in every state, in the product Storybook |
 
 | variable | required | default | description |
 |---|---|---|---|

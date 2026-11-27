@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { fleetOf } from '../../.storybook/fleet';
-import { emptyList, installApi } from './api';
+import { emptyList, fromFixture, installApi } from './api';
+import sample from './sample-fixture.json';
 
 let restore = (): void => undefined;
 
@@ -26,6 +27,29 @@ describe('the story core', () => {
     const again = await fetch('/api/v1/jobs');
     expect(first.total).toBe(0);
     expect(again.status).toBe(200);
+  });
+
+  it('answers the rows of a fixture file, with a text or a JSON body', async () => {
+    restore = installApi('many', fromFixture(sample));
+    for (let i = 0; i < 2; i++) {
+      const jobs = await fetch('/api/v1/jobs');
+      expect(jobs.status).toBe(200);
+      expect(await jobs.json()).toEqual({ items: [], cursor: '', limit: 50 });
+    }
+    const principal = await fetch('/api/v1/principal');
+    expect(principal.headers.get('content-type')).toBe('application/json');
+    expect(await principal.json()).toEqual({ principal: 'user:designer' });
+  });
+
+  it('answers a fixture row whose status carries no body', async () => {
+    restore = installApi(
+      'many',
+      fromFixture({
+        'DELETE /api/v1/jobs/1': { status: 204, type: 'text/plain', body: '' },
+      }),
+    );
+    const answer = await fetch('/api/v1/jobs/1', { method: 'DELETE' });
+    expect(answer.status).toBe(204);
   });
 
   it('answers a recorded row that carries its query', async () => {

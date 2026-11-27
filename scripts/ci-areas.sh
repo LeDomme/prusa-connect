@@ -130,6 +130,11 @@ areas_of() {
 	frontend/* | packages/svelte/* | packages/standards/*)
 		echo web ;;
 
+	# The design CLI and its deprecations. The web app's Storybook imports the
+	# CLI, and the lint rule of deprecated imports reads the deprecations.
+	tools/design/* | design/*)
+		echo web ;;
+
 	cmd/* | internal/* | adapters/* | sdk/* | test/* | tools/* | config/* | compose/* | deploy/* | \
 		packages/fractal/* | packages/graphql/* | .golangci.yml)
 		echo go ;;

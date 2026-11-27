@@ -23,6 +23,8 @@ import {
   testFileOverride,
 } from './shared.js';
 
+export { deprecatedImports } from './shared.js';
+
 const TRANSPORT_MESSAGE =
   'The core is reached through @prusa/connect (frontend-structure.md, ADR-20260909-c7x rules 2 and 8).';
 

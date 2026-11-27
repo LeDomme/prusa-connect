@@ -1779,6 +1779,7 @@ jobs:
           packages/typescript/pnpm-lock.yaml
           packages/svelte/pnpm-lock.yaml
           frontend/pnpm-lock.yaml
+          tools/design/pnpm-lock.yaml
 
 
     - name: Fetch the Chromium the browser tests run in
@@ -1795,6 +1796,12 @@ jobs:
     - name: Build the web app's Storybook
       if: ${{ !cancelled() }}
       run: make frontend-storybook
+
+    # The design CLI, which the Storybook runs for its status tags and its
+    # Design panel.
+    - name: Test and type-check the design CLI
+      if: ${{ !cancelled() }}
+      run: make design-check
 
   web-embedded:
     name: Web / Embedded binary

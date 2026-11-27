@@ -203,7 +203,9 @@ var readerOfKind = map[Kind]bool{
 	KindHistory: true,
 	KindDB:      true,
 	KindLink:    true,
-	KindDriver:  false,
+	// Read by the dial supervisor in internal/app, which opens each session
+	// on a driver module's process (ADR-20261123-sat).
+	KindDriver: true,
 	// Read by the module plane in internal/app, which mounts each verified
 	// bundle under its namespace for the HTTP surface.
 	KindAsset: true,

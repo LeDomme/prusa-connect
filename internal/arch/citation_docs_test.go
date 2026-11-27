@@ -279,6 +279,7 @@ var pagesCitingNothing = []string{
 	"reference/go-sdk/storageapi-storageapitest.md",
 	"reference/go-sdk/accessapi.md",
 	"reference/go-sdk/diagnosticsapi.md",
+	"reference/go-sdk/driverwire.md",
 	"reference/go-sdk/storageapi.md",
 	"reference/go-sdk/transferapi.md",
 	"reference/go-sdk/uiapi.md",

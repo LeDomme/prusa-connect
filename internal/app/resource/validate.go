@@ -185,6 +185,15 @@ func (s *Store) validate(
 				", so one would report ready and answer nothing")
 	}
 
+	// This API creates builtin instances, and nothing reads a builtin driver
+	// back (ADR-20261123-sat). A driver module an install declared is
+	// rewritten under the runtime it has.
+	if err := readBackAs(instance, runtimeInForce(current, exists)); err != nil {
+		return Spec{}, httpfault.RequestInvalid("path.kind",
+			"expected one of "+kindNames(ref.ReadKinds())+", and a driver installed as a module",
+			err.Error())
+	}
+
 	if exists && desired.Type != current.Spec.Type {
 		return Spec{}, httpfault.FieldImmutable("body.type")
 	}

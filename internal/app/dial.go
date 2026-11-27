@@ -47,7 +47,10 @@ type dialledConnector struct {
 type dials struct {
 	log        *slog.Logger
 	connectors map[string]dialledConnector
-	backoff    supervisor.BackoffPolicy
+	// modules finds a driver module an endpoint names, when no connector of
+	// that name is declared (ADR-20261123-sat rule 11). Nil finds none.
+	modules func(name string) (dialledConnector, bool)
+	backoff supervisor.BackoffPolicy
 
 	// changes carries the whole endpoint list. It is depth one and the send
 	// replaces what is waiting: a sync that has not been read yet is a list
@@ -68,8 +71,12 @@ type dialling struct {
 // startDialling starts the supervisor and returns it. Nothing is dialled until
 // an endpoint list arrives through SyncEndpoints, which is what the resource
 // store calls once the store and the connectors both exist.
-func startDialling(ctx context.Context, log *slog.Logger, connectors []dialledConnector) *dials {
+func startDialling(
+	ctx context.Context, log *slog.Logger, connectors []dialledConnector,
+	modules func(name string) (dialledConnector, bool),
+) *dials {
 	d := newDials(log, connectors, dialLadder())
+	d.modules = modules
 	d.start(ctx)
 
 	return d
@@ -198,6 +205,10 @@ func (d *dials) apply(ctx context.Context, endpoints []resource.Endpoint, runnin
 		}
 
 		connector, known := d.connectors[endpoint.Connector]
+		if !known && d.modules != nil {
+			connector, known = d.modules(endpoint.Connector)
+		}
+
 		if !known {
 			// Not a startup failure. The endpoint list survives a configuration
 			// change, so an address naming a connector this deployment has

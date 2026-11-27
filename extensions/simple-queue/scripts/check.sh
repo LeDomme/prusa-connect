@@ -11,7 +11,7 @@
 #      somebody who cloned the module alone does
 #   2. holds the typed client to the module's OpenAPI fragment
 #   3. lints and type-checks the browser half, runs its tests in Chromium,
-#      checks every component has its stories, and builds the Storybook
+#      and checks every component has its stories
 #   4. lays the module out as a release and installs it with
 #      `prusa-connect module add`
 #   5. starts the demo with one simulated printer that prints only what it is
@@ -203,7 +203,6 @@ step "Chromium for the browser tests installs" sh -c \
 	"cd '$UI_DIR' && pnpm exec playwright install $PLAYWRIGHT_FLAGS chromium"
 step "the browser half lints, type-checks and its tests pass in Chromium" sh -c \
 	"cd '$UI_DIR' && pnpm run check"
-step "the browser half's Storybook builds" sh -c "cd '$UI_DIR' && pnpm run build-storybook"
 step "the browser half builds into a bundle" sh -c "cd '$UI_DIR' && pnpm run build"
 
 if [ ! -f "$UI_DIR/dist/module.yaml" ] || [ ! -f "$UI_DIR/dist/ui/index.js" ]; then

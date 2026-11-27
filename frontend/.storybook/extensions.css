@@ -1,0 +1,9 @@
+/* The utilities the extensions' markup names. Tailwind scans the app's tree
+   and the library's, so a class only an extension uses would have no rule
+   when its stories are drawn here. The theme is the app's, read without
+   being emitted a second time. */
+@reference '../src/styles/global.css';
+@source '../../extensions/threemf/ui/src';
+@source '../../extensions/server-slicing/ui/src';
+@source '../../extensions/simple-queue/ui/src';
+@tailwind utilities;
