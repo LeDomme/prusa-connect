@@ -4,13 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       source_ref:
-        description: "Source branch, tag or commit (empty = selected branch HEAD)"
+        description: "Optional source branch, tag or commit (empty = sync Prusa + RTSP fix)"
         required: false
         type: string
       publish_latest:
         description: "Also update the Docker latest tag"
         type: boolean
         default: true
+  schedule:
+    - cron: '17 * * * *'
   push:
     branches: [main]
     paths:
@@ -24,8 +26,75 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  sync:
+    if: github.repository == 'LeDomme/prusa-connect' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      revision: ${{ steps.source.outputs.revision }}
+      build: ${{ steps.source.outputs.build }}
+    steps:
+      - name: Checkout managed RTSP source branch
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: custom/rtsp-camera
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Sync upstream and select source
+        id: source
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+          EVENT: ${{ github.event_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "$SOURCE_REF" ]; then
+            # Resolve only a commit already reachable in this repository.
+            REVISION=$(git rev-parse --verify --end-of-options "$SOURCE_REF^{commit}" 2>/dev/null || git rev-parse --verify --end-of-options "origin/$SOURCE_REF^{commit}")
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git fetch --no-tags https://github.com/prusa3d/prusa-connect.git refs/heads/main
+            UPSTREAM=$(git rev-parse FETCH_HEAD)
+            if ! git merge-base --is-ancestor "$UPSTREAM" HEAD; then
+              # Keep the fork's existing Actions files: GITHUB_TOKEN cannot
+              # update workflow definitions. The product source is merged normally.
+              git merge --no-commit --no-ff "$UPSTREAM" || {
+                git rev-parse --verify MERGE_HEAD >/dev/null || exit 1
+              }
+              git restore --source=HEAD --staged --worktree -- .github/workflows
+              if [ -n "$(git ls-files -u)" ]; then
+                echo "::error::Upstream merge conflicts; resolve on custom/rtsp-camera before publishing."
+                git diff --name-only --diff-filter=U
+                git merge --abort
+                exit 1
+              fi
+              git commit -m "Merge Prusa upstream $UPSTREAM into RTSP build"
+              git push origin HEAD:refs/heads/custom/rtsp-camera
+            fi
+            REVISION=$(git rev-parse HEAD)
+          fi
+          BASE=$(git show "$REVISION:VERSION" | tr -d '[:space:]')
+          DATE=$(TZ=UTC git show -s --format=%cd --date=format-local:%Y%m%d "$REVISION")
+          SHORT=$(git rev-parse --short=12 "$REVISION")
+          VERSION="$BASE-dev.$DATE.$SHORT"
+          BUILD=true
+          if [ "$EVENT" != workflow_dispatch ]; then
+            # Fail closed on API errors, rather than silently rebuilding.
+            TAGS=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[].tag_name')
+            if grep -Fxq "v$VERSION" <<< "$TAGS"; then
+              BUILD=false
+              echo "::notice::Source $REVISION already has a release."
+            fi
+          fi
+          echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+
   build:
-    if: github.repository == 'LeDomme/prusa-connect' && (github.event_name == 'workflow_dispatch' || github.event.before == '11abce3903c937c3b5f037a1a8a111a04a40cd2b')
+    needs: sync
+    if: needs.sync.outputs.build == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -40,7 +109,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          ref: ${{ github.event_name == 'push' && github.event.before || inputs.source_ref || github.sha }}
+          ref: ${{ needs.sync.outputs.revision }}
           persist-credentials: false
 
       - name: Prepare version and image metadata
@@ -127,7 +196,7 @@ jobs:
         run: cosign sign --yes "$IMAGE@$DIGEST"
 
       - name: Update latest after successful signing
-        if: github.event_name == 'push' || inputs.publish_latest
+        if: github.event_name != 'workflow_dispatch' || inputs.publish_latest
         env:
           IMAGE: ${{ steps.meta.outputs.image }}
           DIGEST: ${{ steps.publish.outputs.digest }}

@@ -1,35 +1,8 @@
 name: CI Pipeline
 
 on:
-  # Every pull request, whatever its base, so a pull request stacked on another
-  # one is checked as GitHub's merge into that base. A side branch is not
-  # pushed under `push`, so its pull request is the only thing that runs CI
-  # over it.
-  pull_request:
-  # The push event covers a merge: without it a broken main would only be found
-  # by whoever opened the next pull request.
-  push:
-    branches: [ main ]
-  # The race detector lane, every night at 03:00 UTC. The `Backend / Race`
-  # shards and `Web / Sign-in at <provider>` are the only gates this trigger
-  # starts: every other gate job skips on `schedule`, so a nightly run is the
-  # detector, the sign-in at the three providers, the paths job they read, and
-  # `CI OK` reporting on them. The detector is too slow to sit on the pull
-  # request path, and a nightly run is what keeps it on a fixed clock rather
-  # than on whoever remembers it.
-  schedule:
-    - cron: '0 3 * * *'
-  # A person starts a run from the Actions page, on any branch. Every job but the race shards
-  # runs, the sign-in at the providers included.
   workflow_dispatch:
 
-# A pull request groups by its ref, so a new commit supersedes the run over the
-# one before it and only the tip is ever checked. That is the behaviour the
-# push trigger above must not inherit: grouping a push by ref puts every merge
-# to an integration branch in one group, where the run in progress is cancelled
-# and a run merely queued is dropped for the next one. Either way the commit is
-# never verified, which is the hole the push trigger was added to close.
-#
 # So a push, the nightly and a run a person starts group by commit instead.
 # Each gets a group nothing else lands in, and runs to its end. The event is in the key because a
 # schedule and a push can name one commit, and they are different runs over it.

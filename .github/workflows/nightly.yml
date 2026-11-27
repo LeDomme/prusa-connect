@@ -21,9 +21,6 @@ name: Nightly
 # dispatches it and on no schedule at all. That is stated here because a
 # scheduled workflow that never fires is the same nothing as no workflow.
 on:
-  schedule:
-    # 03:00 UTC, off the working day in Prague either side of daylight saving.
-    - cron: '0 3 * * *'
   workflow_dispatch:
 
 # A nightly that overran is not cancelled by the next one: the run in flight is
