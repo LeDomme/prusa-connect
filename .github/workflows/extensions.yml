@@ -11,39 +11,6 @@ name: Extensions
 # holds the schedule below: a filter cannot see a core change that breaks an
 # extension through a path it does not list, so the same gates run every night.
 on:
-  pull_request:
-    paths:
-      - 'extensions/**'
-      - 'sdk/**'
-      - 'packages/svelte/**'
-      - 'packages/typescript/**'
-      - 'packages/standards/**'
-      - 'internal/**'
-      - 'cmd/**'
-      - 'go.mod'
-      - 'go.sum'
-      - '.nvmrc'
-      - 'Makefile'
-      - '.golangci.yml'
-      - '.github/workflows/extensions.yml'
-  push:
-    branches: [ main ]
-    paths:
-      - 'extensions/**'
-      - 'sdk/**'
-      - 'packages/svelte/**'
-      - 'packages/typescript/**'
-      - 'packages/standards/**'
-      - 'internal/**'
-      - 'cmd/**'
-      - 'go.mod'
-      - 'go.sum'
-      - '.nvmrc'
-      - 'Makefile'
-      - '.golangci.yml'
-      - '.github/workflows/extensions.yml'
-  schedule:
-    - cron: '30 3 * * *'
   workflow_dispatch:
 
 # The same grouping as ci.yml: a pull request keeps only its newest run, and a

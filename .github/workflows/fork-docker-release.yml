@@ -12,7 +12,7 @@ on:
         type: boolean
         default: true
   schedule:
-    - cron: '17 * * * *'
+    - cron: '17 3 * * *'
   push:
     branches: [main]
     paths:
@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   sync:
-    if: github.repository == 'LeDomme/prusa-connect' && github.ref == 'refs/heads/main'
+    if: github.repository == 'LeDomme/prusa-connect' && github.ref == 'refs/heads/main' && (github.event_name != 'push' || github.event.before == '11bdb5e56f739a92d9dbfc36368b92972ceace70')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -65,6 +65,47 @@ jobs:
                 git rev-parse --verify MERGE_HEAD >/dev/null || exit 1
               }
               git restore --source=HEAD --staged --worktree -- .github/workflows
+              # PR #41 promotes pion/logging from indirect to direct.
+              # Upstream dependency updates can conflict with that move.
+              # Resolve only if the entire local go.mod change since the
+              # merge base is precisely that promotion. Preserve every
+              # upstream version and reject all other conflicts.
+              if [ -n "$(git ls-files -u -- go.mod)" ]; then
+                python3 - <<'PY'
+          import re
+          import subprocess
+          from pathlib import Path
+
+          def read_stage(stage):
+              return subprocess.check_output(
+                  ["git", "show", f":{stage}:go.mod"], text=True
+              )
+
+          def promote_logging(text):
+              lines = text.splitlines(keepends=True)
+              matches = [
+                  i for i, line in enumerate(lines)
+                  if re.fullmatch(r"\tgithub\.com/pion/logging\s+\S+ // indirect\n", line)
+              ]
+              if len(matches) != 1:
+                  raise ValueError("Expected exactly one indirect pion/logging entry")
+              entry = lines.pop(matches[0]).replace(" // indirect", "")
+              positions = [
+                  i for i, line in enumerate(lines)
+                  if line.startswith("\tgithub.com/pion/webrtc/v4 ")
+              ]
+              if len(positions) != 1:
+                  raise ValueError("Expected exactly one direct pion/webrtc entry")
+              lines.insert(positions[0], entry)
+              return "".join(lines)
+
+          base, ours, upstream = (read_stage(i) for i in (1, 2, 3))
+          if promote_logging(base) != ours:
+              raise SystemExit("Refusing automatic go.mod resolution: local changes differ")
+          Path("go.mod").write_text(promote_logging(upstream))
+          PY
+                git add go.mod
+              fi
               if [ -n "$(git ls-files -u)" ]; then
                 echo "::error::Upstream merge conflicts; resolve on custom/rtsp-camera before publishing."
                 git diff --name-only --diff-filter=U

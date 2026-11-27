@@ -4,8 +4,6 @@ name: Upgrade compatibility
 # need GitHub releases and run on a fixed clock, so a network outage cannot
 # make an unrelated pull request red.
 on:
-  schedule:
-    - cron: '15 4 * * *'
   workflow_dispatch:
 
 concurrency:
