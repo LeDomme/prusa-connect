@@ -476,6 +476,10 @@ type ModuleEntry struct {
 	// camera_types (ADR-20261106-km2). A camera declared as
 	// <namespace>/<name> runs on the core's generic driver.
 	CameraTypes []CameraType `json:"camera_types,omitempty" yaml:"camera_types"`
+	// Driver is what a driver module's driver is, from its manifest's driver
+	// block (ADR-20261123-sat rule 3). The host dials the module's endpoints
+	// with it, long after the release is gone.
+	Driver *DriverBlock `json:"driver,omitempty" yaml:"driver,omitempty"`
 	// Options is the settings the module declared it reads, with the default
 	// of each. It is the module's own default configuration.
 	//

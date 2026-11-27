@@ -1,0 +1,28 @@
+{
+  // Type-checks the CLI and its tests. Node strips the types when it runs a
+  // file, so nothing is emitted. The strict flags are those of
+  // packages/standards/tsconfig.json, because the CLI imports
+  // frontend/vite/import-map.ts, which is written to them.
+  "compilerOptions": {
+    "target": "ES2025",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2025"],
+    "types": ["node"],
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "forceConsistentCasingInFileNames": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["src", "test"]
+}

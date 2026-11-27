@@ -1,0 +1,12 @@
+# This package alone, like every JavaScript package in this tree.
+packages:
+  - .
+
+# Same three-day cooldown as frontend/pnpm-workspace.yaml.
+minimumReleaseAge: 4320
+
+# Written versions stay exact.
+savePrefix: ''
+
+# Dependency build scripts are refused unless named here.
+allowBuilds: {}

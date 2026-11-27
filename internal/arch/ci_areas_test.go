@@ -119,6 +119,8 @@ func TestTheAreaScriptSortsEachPath(t *testing.T) {
 		"a README in the Go tree":               {"M\tsdk/README.md\n", []string{"go", "docs"}},
 		"a file of the web app":                 {"M\tfrontend/src/lib/x.svelte\n", []string{"web"}},
 		"a component":                           {"M\tpackages/svelte/src/primitives/button/button.svelte\n", []string{"web"}},
+		"the design CLI":                        {"M\ttools/design/src/cli.ts\n", []string{"web"}},
+		"the design deprecations":               {"M\tdesign/deprecations.json\n", []string{"web"}},
 		"the generated client":                  {"M\tpackages/typescript/src/generated/core-api.ts\n", []string{"go", "web"}},
 		"a file of the library a Go test reads": {"M\tpackages/svelte/src/styles/tokens.css\n", []string{"go", "web"}},
 		"an example module":                     {"M\texamples/spools/main.go\n", []string{"go", "web"}},

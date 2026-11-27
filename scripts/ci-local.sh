@@ -620,6 +620,7 @@ plan_lanes() {
 	lane client-ui-types full pnpm        20  js    "$WEB_CLIENT" '"$MAKE" client-ui-svelte-check'
 	lane client-ui-story full pnpm        15  js    "$WEB_CLIENT" '"$MAKE" client-ui-storybook'
 	lane frontend-story full "pnpm frontend-deps" 20 js "Web / Application" '"$MAKE" frontend-storybook'
+	lane design        full "pnpm frontend-deps" 20 js "Web / Application" '"$MAKE" design-check'
 	lane client-ui-lint full pnpm         50  js    "Web / Component library lint" '"$MAKE" client-ui-lint'
 	lane client-ui-test full "pnpm chromium" 150 js "Web / Component library tests" '"$MAKE" client-ui-test'
 	lane docker        full docker        240 compose "Docker / Hardened image"        '"$MAKE" docker-check'

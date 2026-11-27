@@ -534,7 +534,9 @@ func serveOver(
 	// the device plane does, because the defer above was registered first: a
 	// loop still running while fleet.Close tears sessions down would dial a
 	// printer into a plane that is shutting.
-	dials := startDialling(ctx, logger, built.dialled)
+	drivers := moduleDrivers{store: store, host: supervision.host, plane: fleet, log: logger}
+	supervision.host.HoldDrivers(fleet.printingOn)
+	dials := startDialling(ctx, logger, built.dialled, drivers.lookup)
 	defer dials.stop()
 
 	// The store hands it the list as it stands and again whenever a write moves

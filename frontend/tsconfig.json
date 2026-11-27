@@ -2,6 +2,9 @@
   "extends": "@prusa/frontend-standards/tsconfig.json",
   "compilerOptions": {
     "types": ["svelte", "vite/client", "node"],
+    // The Storybook manager addons are React, which Storybook's manager
+    // bundler compiles to `React.createElement`.
+    "jsx": "react",
     // Both packages are read from their sources, so a fresh checkout
     // type-checks before anything builds them. Their `types` condition names
     // a `dist/` that only `make client-sdk-check` and `make client-ui-build`

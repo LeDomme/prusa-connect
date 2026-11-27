@@ -78,6 +78,12 @@
   /** The one label treatment every block on this panel names its parts with. */
   const BLOCK_LABEL = 'text-xs font-medium text-muted-foreground';
 
+  /**
+   * The camera's label shares its row with a small button, so the label of the
+   * column beside it takes the same height to sit on the same line.
+   */
+  const LABEL_ROW = 'flex min-h-control-height items-center';
+
   const MS_PER_SECOND = 1000;
 
   const printerState = $derived(stateOf(telemetry, device));
@@ -391,7 +397,9 @@
     ]}
   >
     {#if job.name !== undefined || jobFallback !== undefined}
-      <span class={BLOCK_LABEL}>{t('printerDetailStatus.currentPrint')}</span>
+      <span class={[BLOCK_LABEL, showsCamera && LABEL_ROW]}>
+        {t('printerDetailStatus.currentPrint')}
+      </span>
     {/if}
     <div class="flex flex-col gap-3">
       <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
@@ -416,7 +424,9 @@
   >
     <div class="flex min-w-0 flex-1 flex-col gap-2">
       {#if finished}
-        <span class={BLOCK_LABEL}>{t('printerDetailStatus.currentPrint')}</span>
+        <span class={[BLOCK_LABEL, showsCamera && LABEL_ROW]}>
+          {t('printerDetailStatus.currentPrint')}
+        </span>
       {/if}
       {@render jobName()}
       {@render progressBar(finished)}
@@ -526,7 +536,7 @@
                   cameraAlone ? 'mx-auto w-full max-w-4xl' : SPLIT_LEADING,
                 ]}
               >
-                <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class={['flex-wrap justify-between gap-2', LABEL_ROW]}>
                   <span class={BLOCK_LABEL}>
                     {t('printerDetailStatus.camera.label')}
                   </span>
@@ -633,12 +643,7 @@
             {:else if split}
               {@render currentPrint()}
             {:else}
-              <div
-                class={[
-                  'flex min-w-0 flex-1 flex-col justify-center',
-                  SPLIT_TRAILING,
-                ]}
-              >
+              <div class={['flex min-w-0 flex-1 flex-col', SPLIT_TRAILING]}>
                 {@render compactPrint()}
               </div>
             {/if}

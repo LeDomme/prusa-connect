@@ -26,6 +26,7 @@ import (
 	"github.com/prusa3d/prusa-connect/sdk/busapi"
 	"github.com/prusa3d/prusa-connect/sdk/cameraapi"
 	"github.com/prusa3d/prusa-connect/sdk/deviceapi"
+	"github.com/prusa3d/prusa-connect/sdk/driverwire"
 	"github.com/prusa3d/prusa-connect/sdk/extension"
 	"github.com/prusa3d/prusa-connect/sdk/stateapi"
 	"github.com/prusa3d/prusa-connect/sdk/storageapi"
@@ -251,6 +252,14 @@ type Host struct {
 
 	mu      sync.Mutex
 	running map[ref.Ref]*instance
+	// drivers is the host's side of each driver module, by instance. It
+	// outlives the module's processes, so a restarted module meets the same
+	// one (ADR-20261123-sat).
+	drivers map[ref.Ref]*driverwire.Client
+	// printing names the printers of a driver module that hold a print, and
+	// holds is the planned step of each module that waits for them to finish.
+	printing func(instance ref.Ref) []string
+	holds    map[ref.Ref]*resource.Step
 	// cameraTypes is the camera types the installed modules offer, as the
 	// last reconcile declared them.
 	cameraTypes map[string]resource.ModuleCameraType
@@ -340,6 +349,7 @@ func New(cfg Config) (*Host, error) {
 		cycles:   map[ref.Ref]string{},
 		serving:  map[ref.Ref]bool{},
 		memory:   map[ref.Ref]*memoryWatch{},
+		drivers:  map[ref.Ref]*driverwire.Client{},
 	}, nil
 }
 
@@ -451,6 +461,10 @@ func (h *Host) carryOut(ctx context.Context, plan resource.Plan) error {
 // instance. Restart asks the supervisor for a restart. Replace is a stop and a
 // start, because a different type cannot inherit the old instance's identity.
 func (h *Host) step(ctx context.Context, step resource.Step) error {
+	if h.held(step) {
+		return nil
+	}
+
 	switch step.Outcome {
 	case resource.OutcomeStart:
 		return h.start(ctx, step.Desired)

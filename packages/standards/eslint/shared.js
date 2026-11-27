@@ -2,6 +2,9 @@
 // into their own flat configs. Not published on its own: a consumer imports
 // one of those three, never this file.
 
+import { existsSync, readFileSync } from 'node:fs';
+import { basename, dirname, extname, join, relative } from 'node:path/posix';
+
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
 import svelte from 'eslint-plugin-svelte';
@@ -241,3 +244,78 @@ export const testFileOverride = ({ restrictedGlobalsOff = false } = {}) => ({
     ...(restrictedGlobalsOff ? { 'no-restricted-globals': 'off' } : {}),
   },
 });
+
+const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The `no-restricted-imports` patterns, which its typescript-eslint twin
+ * takes too, for the components a designer marked deprecated in
+ * `<rootDir>/design/deprecations.json`, keyed by file relative to `rootDir`.
+ * No manifest, no patterns; an entry without a `use` string gives none.
+ *
+ * The rule compares the specifier as written, so each component gets two:
+ * - its file, by its directory and name at the end of the specifier
+ *   (`../button/button.svelte`), from any depth;
+ * - the name it is re-exported under as `default as <Name>` in the
+ *   `index.ts` beside it, imported from any barrel on the way up to its
+ *   package (`../../primitives`, `@prusa/connect-ui/primitives`) or from the
+ *   package itself.
+ *
+ * ponytail: matched by name, not resolved, so another `button/button.svelte`
+ * or another `Button` behind a `button` or `primitives` barrel warns too; an
+ * import resolver plugin would tell them apart.
+ *
+ * @param {string} rootDir
+ * @returns {{ regex: string, importNames?: string[], message: string }[]}
+ */
+export const deprecatedImports = (rootDir) => {
+  const manifest = join(rootDir, 'design/deprecations.json');
+  if (!existsSync(manifest)) return [];
+  /** @type {unknown} */
+  const deprecations = JSON.parse(readFileSync(manifest, 'utf8'));
+  if (typeof deprecations !== 'object' || deprecations === null) return [];
+  return Object.entries(deprecations).flatMap(([file, entry]) => {
+    // Every lint run loads this config, so an entry without a replacement
+    // is skipped rather than failing them all.
+    const use = entry?.use;
+    if (typeof use !== 'string') return [];
+    const message = `Deprecated in design: use ${use}`;
+    const dir = dirname(file);
+    const ext = extname(file);
+    const name = basename(file, ext);
+    const patterns = [
+      {
+        regex: `(^|/)${escapeRegex(`${basename(dir)}/${name}`)}(${escapeRegex(ext)})?$`,
+        message,
+      },
+    ];
+    const index = join(rootDir, dir, 'index.ts');
+    const exported = existsSync(index)
+      ? new RegExp(
+          `default\\s+as\\s+(\\w+)\\s*\\}\\s*from\\s*['"]\\./${escapeRegex(name)}(${escapeRegex(ext)})?['"]`,
+        ).exec(readFileSync(index, 'utf8'))?.[1]
+      : undefined;
+    if (exported === undefined) return patterns;
+
+    let pkg = dir;
+    while (pkg !== '.' && !existsSync(join(rootDir, pkg, 'package.json'))) {
+      pkg = dirname(pkg);
+    }
+    const packageJson = join(rootDir, pkg, 'package.json');
+    const barrels = [
+      ...relative(pkg, dir)
+        .split('/')
+        .filter((segment) => segment !== '' && segment !== 'src')
+        .map((segment) => `(^|/)${escapeRegex(segment)}$`),
+      ...(existsSync(packageJson)
+        ? [
+            `^${escapeRegex(JSON.parse(readFileSync(packageJson, 'utf8')).name)}$`,
+          ]
+        : []),
+    ];
+    return [
+      ...patterns,
+      { regex: barrels.join('|'), importNames: [exported], message },
+    ];
+  });
+};

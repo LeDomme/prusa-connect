@@ -207,6 +207,13 @@ var Keys = map[string]config.Key{
 		Doc: "The camera types the module offers, from its manifest's camera_types. A camera added as " +
 			"<namespace>/<name> runs on the generic camera, and the module feeds it its pictures.",
 	},
+	"resources.<kind>.<name>.module.driver.dialect": {
+		Doc: "A driver module's dialect from its manifest: what an endpoint needs and the states its " +
+			"printers report, in connectorapi.Dialect's JSON. The server never asks the process for it.",
+	},
+	"resources.<kind>.<name>.module.driver.baseline": {
+		Doc: "What the module's driver can do for any printer, as connectorapi.Set spells it in JSON.",
+	},
 	"resources.<kind>.<name>.module.options": {
 		Doc: "The settings the module declares, each with its type, its default and its description. " +
 			"A key in the config block replaces the default of that key alone.",

@@ -67,3 +67,13 @@ func viewTypesOf(held manifest.Manifest) []string {
 
 	return out
 }
+
+// driverBlockOf is the driver block a driver module's install records, and
+// nil for any other module.
+func driverBlockOf(offered *manifest.Driver) *install.DriverBlock {
+	if offered == nil {
+		return nil
+	}
+
+	return &install.DriverBlock{Dialect: offered.Dialect, Baseline: offered.Baseline}
+}

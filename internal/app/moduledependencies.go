@@ -85,6 +85,7 @@ func moduleRecordOf(instance ref.Ref, namespace string, held manifest.Manifest, 
 				FileTypes:   fileTypesOf(held.FileAnalysis),
 				ViewTypes:   viewTypesOf(held),
 				CameraTypes: cameraTypesOf(held.CameraTypes),
+				Driver:      driverBlockOf(held.Driver),
 			},
 		},
 	}
