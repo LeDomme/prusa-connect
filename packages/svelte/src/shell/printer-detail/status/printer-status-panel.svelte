@@ -616,12 +616,7 @@
             {:else if split}
               {@render currentPrint()}
             {:else}
-              <div
-                class={[
-                  'flex min-w-0 flex-1 flex-col justify-center',
-                  SPLIT_TRAILING,
-                ]}
-              >
+              <div class={['flex min-w-0 flex-1 flex-col', SPLIT_TRAILING]}>
                 {@render compactPrint()}
               </div>
             {/if}
